@@ -1,42 +1,54 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from "next/server";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { name, email, password } = await request.json();
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    // Validate inputs
+    if (!name || !email || !password) {
+      return NextResponse.json(
+        { error: "Name, email, and password are required" },
+        { status: 400 }
+      );
     }
 
-    // If email confirmation is required
-    if (!data.session) {
-      return NextResponse.json({
-        message: 'Please check your email to confirm your account',
-      });
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: "Password must be at least 6 characters long" },
+        { status: 400 }
+      );
     }
 
+    // Make a request to the backend server
+    const response = await fetch(
+      `${process.env.SERVER_API_URL}/auth/register`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data.error || "Registration failed" },
+        { status: response.status }
+      );
+    }
+
+    // Return user data and token
     return NextResponse.json({
-      token: data.session?.access_token,
       user: data.user,
+      token: data.token,
     });
   } catch (error) {
-    console.error('Sign-up error:', error);
+    console.error("Sign up error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "An unexpected error occurred" },
       { status: 500 }
     );
   }
