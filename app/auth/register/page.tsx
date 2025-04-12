@@ -14,6 +14,49 @@ export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const source = searchParams.get("source");
+  const extensionId = searchParams.get("extensionId");
+
+  function notifyExtension(userData: any, token: string) {
+    try {
+      if (extensionId && typeof chrome !== "undefined") {
+        console.log("Attempting to communicate with extension:", extensionId);
+        console.log("Auth data to send:", {
+          userData: typeof userData,
+          tokenLength: token?.length,
+        });
+
+        // Send message to extension with Supabase token
+        chrome.runtime.sendMessage(
+          extensionId,
+          {
+            type: "KNUGGET_AUTH_SUCCESS",
+            payload: {
+              ...userData,
+              token: token,
+            },
+          },
+          function (response: any) {
+            console.log("Extension response received:", response);
+            if (response && response.success) {
+              console.log("Successfully communicated with extension");
+              // Close this tab after 1.5 seconds
+              setTimeout(() => {
+                window.close();
+              }, 1500);
+            } else {
+              console.error("Failed to communicate with extension:", response);
+            }
+          }
+        );
+      } else {
+        console.log("No extension ID found in URL or Chrome API not available");
+        console.log("ExtensionId:", extensionId);
+        console.log("Chrome available:", typeof chrome !== "undefined");
+      }
+    } catch (err) {
+      console.error("Error communicating with extension:", err);
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,31 +78,12 @@ export default function RegisterPage() {
         throw new Error(data.error || "Registration failed");
       }
 
-      // If this registration came from the extension, we need to store the token in chrome.storage
+      // If this registration came from the extension, use the new communication method
       if (source === "extension") {
-        // This code only runs if in a browser extension context
-        if (typeof chrome !== "undefined" && chrome.storage) {
-          chrome.storage.local.set({
-            knuggetUserInfo: {
-              ...data.user,
-              token: data.token,
-              expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-            },
-          });
-
-          // Notify other extension components
-          chrome.runtime.sendMessage({
-            type: "AUTH_STATE_CHANGED",
-            payload: { isLoggedIn: true },
-          });
-
-          // Close this tab after 1.5 seconds to return to YouTube
-          setTimeout(() => {
-            window.close();
-          }, 1500);
-        }
+        // Use the new method to communicate with the extension
+        notifyExtension(data.user, data.token);
       } else {
-        // Normal web app registration flow - immediate redirect to dashboard
+        // Normal web app registration flow
         router.push("/dashboard");
       }
     } catch (err) {

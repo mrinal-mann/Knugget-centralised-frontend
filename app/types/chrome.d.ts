@@ -1,23 +1,28 @@
-// Chrome API type declarations for use in Next.js app
+// Chrome extension API type declarations
 interface Chrome {
-  storage: {
-    local: {
-      get: (keys: string[], callback: (result: any) => void) => void;
-      set: (items: object, callback?: () => void) => void;
-      remove: (keys: string[], callback?: () => void) => void;
+  runtime: {
+    sendMessage: {
+      (message: any): void;
+      (
+        extensionId: string,
+        message: any,
+        responseCallback?: (response: any) => void
+      ): void;
     };
   };
-  runtime: {
-    sendMessage: (message: any) => void;
+  storage?: {
+    local: {
+      set: (items: { [key: string]: any }) => void;
+    };
   };
 }
 
-// Add Chrome to the global namespace
+// Add Chrome to the window object
 declare global {
   interface Window {
     chrome?: Chrome;
   }
-  const chrome: Chrome | undefined;
+  var chrome: Chrome | undefined;
 }
 
 export {};
