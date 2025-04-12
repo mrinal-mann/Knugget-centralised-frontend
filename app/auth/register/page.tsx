@@ -59,7 +59,7 @@ export default function RegisterPage() {
           }, 1500);
         }
       } else {
-        // Normal web app registration flow
+        // Normal web app registration flow - immediate redirect to dashboard
         router.push("/dashboard");
       }
     } catch (err) {

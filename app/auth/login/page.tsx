@@ -20,7 +20,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/signin", {
+      const response = await fetch("http://localhost:3000/api/auth/signin", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -149,6 +149,14 @@ export default function LoginPage() {
                 className="font-medium text-indigo-600 hover:text-indigo-500"
               >
                 Don't have an account? Sign up
+              </Link>
+            </div>
+            <div className="text-sm">
+              <Link
+                href="/auth/forgot-password"
+                className="font-medium text-indigo-600 hover:text-indigo-500"
+              >
+                Forgot password?
               </Link>
             </div>
           </div>
