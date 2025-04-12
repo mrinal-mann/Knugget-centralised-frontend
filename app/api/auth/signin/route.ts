@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Make a request to the backend server
-    const response = await fetch(`${process.env.SERVER_API_URL}/auth/login`, {
+    // Make a request to the backend server - FIX: Changed /auth/login to /auth/signin
+    const response = await fetch(`${process.env.SERVER_API_URL}/auth/signin`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       user: data.user,
       token: data.token,
+      expiresAt: data.expiresAt || Date.now() + 24 * 60 * 60 * 1000, // Add expiresAt if not provided
     });
   } catch (error) {
     console.error("Sign in error:", error);

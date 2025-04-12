@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [debugInfo, setDebugInfo] = useState<string | null>(null); // For debugging
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -19,11 +20,7 @@ export default function LoginPage() {
     try {
       if (extensionId && typeof chrome !== "undefined") {
         console.log("Attempting to communicate with extension:", extensionId);
-        console.log("Auth data to send:", {
-          userData: typeof userData,
-          tokenLength: token?.length,
-        });
-
+        
         // Send message to extension with Supabase token
         chrome.runtime.sendMessage(
           extensionId,
@@ -32,6 +29,7 @@ export default function LoginPage() {
             payload: {
               ...userData,
               token: token,
+              expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
             },
           },
           function (response: any) {
@@ -44,16 +42,21 @@ export default function LoginPage() {
               }, 1500);
             } else {
               console.error("Failed to communicate with extension:", response);
+              setDebugInfo("Failed to communicate with extension: " + JSON.stringify(response));
             }
           }
         );
       } else {
         console.log("No extension ID found in URL or Chrome API not available");
-        console.log("ExtensionId:", extensionId);
-        console.log("Chrome available:", typeof chrome !== "undefined");
+        if (!extensionId) {
+          setDebugInfo("No extension ID found in URL");
+        } else if (typeof chrome === "undefined") {
+          setDebugInfo("Chrome API not available");
+        }
       }
     } catch (err) {
       console.error("Error communicating with extension:", err);
+      setDebugInfo("Error communicating with extension: " + (err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -61,9 +64,11 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setDebugInfo(null);
 
     try {
-      const response = await fetch("http://localhost:3000/api/auth/signin", {
+      // Use full absolute URL to avoid any path resolution issues
+      const response = await fetch(`${window.location.origin}/api/auth/signin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -88,6 +93,11 @@ export default function LoginPage() {
     } catch (err) {
       console.error("Login error:", err);
       setError((err as Error).message || "Failed to login. Please try again.");
+      
+      // Add more debug info
+      if (err instanceof Error && err.message.includes("Database error")) {
+        setDebugInfo("There appears to be a database connection issue. Please check your environment variables and database configuration.");
+      }
     } finally {
       setLoading(false);
     }
@@ -125,6 +135,34 @@ export default function LoginPage() {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {debugInfo && (
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-blue-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9 8a1 1 0 000 2h2a1 1 0 100-2H9z"
+                    clipRule="evenodd"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    d="M10 2a8 8 0 100 16 8 8 0 000-16zM3.293 7.707a1 1 0 011.414-1.414L6 7.586l1.293-1.293a1 1 0 011.414 1.414L7.414 9l1.293 1.293a1 1 0 01-1.414 1.414L6 10.414l-1.293 1.293a1 1 0 01-1.414-1.414L4.586 9 3.293 7.707z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-blue-700">{debugInfo}</p>
               </div>
             </div>
           </div>
@@ -169,7 +207,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-between">
             <div className="text-sm">
               <Link
-                href="/auth/register"
+                href="/auth/signup"
                 className="font-medium text-indigo-600 hover:text-indigo-500"
               >
                 Don't have an account? Sign up
